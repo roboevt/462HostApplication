@@ -24,7 +24,8 @@ struct Richarduino {
         // Open serial port connection
         portFd = open(location.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
         if (portFd < 0) {
-            throw std::runtime_error("Failed to open serial port <" + location + ">");
+            std::cout << "Failed to open serial port <" << location << ">" << std::endl;
+            return;
         }
         // Edit settings
         if (tcgetattr(portFd, &tty) != 0) { /* handle error */
