@@ -193,6 +193,15 @@ MainWindow::MainWindow(QWidget *parent)
         path.lineTo(QPointF(x, 100*sin(0.03 * x)+scopeHeight/2));
     }
     painter.drawPath(path);
+
+    pen.setColor(Qt::blue);
+    painter.setPen(pen);
+    QPainterPath path2;
+    for(double x = 0; x < scopeWidth; x++) {
+        path2.lineTo(QPointF(x, -180*(sin(0.05 * (x-100))/(0.05 * (x-100)))+scopeHeight/2));
+    }
+    painter.drawPath(path2);
+
     QLabel* oscopeLabel = new QLabel();
     oscopeLabel->setPixmap(pixmap);
     totalLayout->addWidget(oscopeLabel, 1, 0, 1, 2);
