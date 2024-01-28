@@ -5,6 +5,8 @@
 
 #include <QLabel>
 #include <QLineEdit>
+#include <QSpinBox>
+#include <QComboBox>
 
 #include "Richarduino.h"
 
@@ -29,6 +31,9 @@ public Q_SLOTS:
     void browseFirmware();
     void uploadFirmware();
 
+    void setGain();
+    void setTrigger();
+
 private:
     Ui::MainWindow *ui;
 
@@ -43,6 +48,8 @@ private:
 
     QLineEdit* peekInput;
     QLineEdit* pokeAddressInput, *pokeDataInput;
+    QSpinBox* gainInput;
+    QComboBox* triggerInput;
 
     std::vector<uint32_t> readFirmwareFile(std::string firmwarePath);
 

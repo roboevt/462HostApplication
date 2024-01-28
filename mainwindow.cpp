@@ -8,26 +8,47 @@
 #include <QVBoxLayout>
 #include <QFileDialog>
 
+#include <QPainter>
+#include <QPainterPath>
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow), richarduino("/dev/ttyUSB1", B115200)
 {
     ui->setupUi(this);
 
-    int boxWidth = 100;
-    int oscilloscopeWidth = 400;
+    // -------------------- Setup --------------------
+
+    int boxWidth = 120;
+    int scopeWidth = 800;
+    int scopeHeight = 400;
 
     QFont buttonFont("Arial", 12, QFont::Bold);
     QFont labelFont("Arial", 12);
 
     QWidget* window = new QWidget(this);
-    window->setStyleSheet("background-color: black");
+    window->setStyleSheet("background-color: light grey");
 
-    QWidget* serialCommsBox = new QWidget(window);
+    QGridLayout* totalLayout = new QGridLayout(window);
+    totalLayout->setSizeConstraint(QGridLayout::SetMinimumSize);
+
+    QWidget* serialCommsBox = new QWidget();
     serialCommsBox->setMinimumWidth(boxWidth * 3);
     serialCommsBox->setStyleSheet("background-color: grey");
+    totalLayout->addWidget(serialCommsBox, 0, 0);
 
     QVBoxLayout* serialCommsLayout = new QVBoxLayout(serialCommsBox);
+    serialCommsLayout->setAlignment(Qt::AlignTop);
+
+    QWidget* scopeControlsBox = new QWidget();
+    scopeControlsBox->setMinimumWidth(boxWidth * 3);
+    scopeControlsBox->setStyleSheet("background-color: grey");
+    totalLayout->addWidget(scopeControlsBox, 0, 1);
+
+    QVBoxLayout* scopeControlsLayout = new QVBoxLayout(scopeControlsBox);
+    scopeControlsLayout->setAlignment(Qt::AlignTop);
+
+    // -------------------- Serial Comms --------------------
 
     // ---------- Peek ----------
     QHBoxLayout* peekLayout = new QHBoxLayout();
@@ -90,7 +111,6 @@ MainWindow::MainWindow(QWidget *parent)
     versionLabel->setStyleSheet(labelStyle);
     versionLabel->setFont(labelFont);
     versionLayout->addWidget(versionLabel);
-    // versionLayout->addStretch();
 
     serialCommsLayout->addLayout(versionLayout);
 
@@ -118,7 +138,67 @@ MainWindow::MainWindow(QWidget *parent)
 
     serialCommsLayout->addLayout(firmwareLayout);
 
-    window->setMinimumWidth(boxWidth * 3 + oscilloscopeWidth);
+    // -------------------- Scope Controls --------------------
+
+    // ---------- Gain ----------
+
+    QHBoxLayout* gainLayout = new QHBoxLayout();
+
+    QPushButton* gainButton = new QPushButton("Set Gain");
+    gainButton->setFixedWidth(boxWidth);
+    gainButton->setFont(buttonFont);
+    gainLayout->addWidget(gainButton);
+    connect(gainButton, SIGNAL(clicked()), SLOT(setGain()));
+
+    gainInput = new QSpinBox();
+    gainInput->setMinimumWidth(boxWidth);
+    gainInput->setMinimum(1);
+    gainInput->setMaximum(50);
+    gainInput->setSuffix("x");
+    gainLayout->addWidget(gainInput);
+
+    scopeControlsLayout->addLayout(gainLayout);
+
+    // ---------- Trigger ----------
+    QHBoxLayout* triggerLayout = new QHBoxLayout();
+
+    QPushButton* triggerButton = new QPushButton("Set Trigger");
+    triggerButton->setFixedWidth(boxWidth);
+    triggerButton->setFont(buttonFont);
+    triggerLayout->addWidget(triggerButton);
+    connect(triggerButton, SIGNAL(clicked()), SLOT(setTrigger()));
+
+    triggerInput = new QComboBox();
+    triggerInput->addItem("Rising Edge");
+    triggerInput->addItem("Falling Edge");
+    triggerInput->addItem("Level"); // Add level input
+    triggerInput->setFont(labelFont);
+    triggerLayout->addWidget(triggerInput);
+
+    scopeControlsLayout->addLayout(triggerLayout);
+
+    // -------------------- Oscilloscope --------------------
+
+    QPixmap pixmap(scopeWidth, scopeHeight);
+    pixmap.fill(QColor("black"));
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    QPen pen(Qt::white);
+    pen.setWidth(3);
+    painter.setPen(pen);
+
+    QPainterPath path;
+    for(double x = 0; x < scopeWidth; x++) {
+        path.lineTo(QPointF(x, 100*sin(0.03 * x)+scopeHeight/2));
+    }
+    painter.drawPath(path);
+    QLabel* oscopeLabel = new QLabel();
+    oscopeLabel->setPixmap(pixmap);
+    totalLayout->addWidget(oscopeLabel, 1, 0, 1, 2);
+
+
+    window->setMinimumWidth(scopeWidth);
     window->setMinimumHeight(window->width());
 
     setCentralWidget(window);
@@ -131,8 +211,6 @@ void MainWindow::peek() {
     int value = richarduino.peek(address);
     peekDataLabel->setText(QString::number(value, 16));
     peekDataLabel->setStyleSheet(completedLabelStyle);
-    sleep(1);
-    peekDataLabel->setStyleSheet(labelStyle);
 }
 
 void MainWindow::poke() {
@@ -156,9 +234,22 @@ void MainWindow::browseFirmware() {
 }
 
 void MainWindow::uploadFirmware() {
-    std::vector<uint32_t> firmware = readFirmwareFile(firmwareLabel->text().toStdString());
-    richarduino.program(firmware);
-    firmwareLabel->setStyleSheet(completedLabelStyle);
+    QString filePath = firmwareLabel->text();
+    if(filePath != "") {
+        std::vector<uint32_t> firmware = readFirmwareFile(filePath.toStdString());
+        richarduino.program(firmware);
+        firmwareLabel->setStyleSheet(completedLabelStyle);
+    }
+}
+
+void MainWindow::setGain() {
+    int gain = gainInput->value();
+    std::cout << "Setting gain (" << gain << ") not yet implemented" << std::endl;
+}
+
+void MainWindow::setTrigger() {
+    QString trigger = triggerInput->currentText();
+    std::cout << "Setting trigger (" << trigger.toStdString() << ") not yet implemented" << std::endl;
 }
 
 std::vector<uint32_t> MainWindow::readFirmwareFile(std::string firmwarePath) {
