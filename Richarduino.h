@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 struct Richarduino {
     int portFd;
@@ -19,9 +20,19 @@ struct Richarduino {
 
     bool connected;
 
-    Richarduino(std::string location, int baud) : baud(baud), connected(false) {
+    std::vector<int> validBauds = {115200, 961200};
+
+    Richarduino(int port, int baud) : baud(baud), connected(false) {
         // serial tty code adapted from SerialPort_RevB Connor Monohan 2021
+
+        if(std::find(validBauds.begin(), validBauds.end(), baud) == validBauds.end()) {
+            std::cout << "Invalid Baudrate" << std::endl;
+            // baud = 0;
+            return;
+        }
+
         // Open serial port connection
+        std::string location = "/dev/ttyUSB" + std::to_string(port);
         portFd = open(location.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
         if (portFd < 0) {
             std::cout << "Failed to open serial port <" << location << ">" << std::endl;
@@ -29,6 +40,7 @@ struct Richarduino {
         }
         // Edit settings
         if (tcgetattr(portFd, &tty) != 0) { /* handle error */
+            std::cout << "Unable to set serial port settings" << std::endl;
             abort();
         }
         // Set baud rate
@@ -47,6 +59,42 @@ struct Richarduino {
     Richarduino() : connected(false) {}
 
     ~Richarduino() { close(portFd); }
+
+    int connect(int port, int baud) {
+
+        if(std::find(validBauds.begin(), validBauds.end(), baud) == validBauds.end()) {
+            std::cout << "Invalid Baudrate" << std::endl;
+            return -1;
+        }
+
+        this->baud = baud;
+        std::string location = "/dev/ttyUSB" + std::to_string(port);
+        // Open serial port connection
+        portFd = open(location.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
+        if (portFd < 0) {
+            std::cout << "Failed to open serial port <" << location << ">" << std::endl;
+            return -1;
+        }
+        // Edit settings
+        if (tcgetattr(portFd, &tty) != 0) { /* handle error */
+            std::cout << "Unable to set serial port settings" << std::endl;
+            return -2;
+        }
+        // Set baud rate
+        cfsetspeed(&tty, baud);
+
+        tty.c_cc[VMIN] = 0;
+        tty.c_cc[VTIME] = 10;
+        tty.c_lflag = 0;  // Non canonical mode, seems to be important
+
+        if (tcsetattr(portFd, TCSANOW, &tty) != 0) {
+            std::cout << "Failed to set serial port attributes" << std::endl;
+            return -3;
+        }
+        connected = true;
+
+        return 1;
+    }
 
     void write(std::string data) {
         int num_written = ::write(portFd, data.c_str(), data.size());

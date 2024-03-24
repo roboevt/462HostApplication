@@ -21,6 +21,9 @@ class SerialCommsWidget : public QWidget
     QWidget* boundingBox;
 
     QPushButton* connectButton;
+    QLineEdit* connectInput;
+    QComboBox* connectBaud;
+
     QPushButton* peekButton;
     QPushButton* pokeButton;
     QPushButton* versionButton;
@@ -33,7 +36,6 @@ class SerialCommsWidget : public QWidget
 
     QLineEdit* peekInput;
     QLineEdit* pokeAddressInput, *pokeDataInput;
-    QLineEdit* connectInput;
 
     QSpinBox* gainInput;
     QComboBox* triggerInput;
@@ -50,12 +52,17 @@ public:
 
 
 public Q_SLOTS:
+    void connectToRicharduino();
     void poke();
     void peek();
     void checkVersion();
     void browseFirmware();
     void uploadFirmware();
 
+    void powerOn();
+    void uartTransfer();
+    void vgaTransfer();
+    void read();
     void setGain();
     void setTrigger();
 

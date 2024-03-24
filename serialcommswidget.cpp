@@ -39,15 +39,20 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     connectButton->setFont(buttonFont);
     connectLayout->addWidget(connectButton);
 
-
     connectInput = new QLineEdit();
     connectInput->setPlaceholderText("Port Number");
-    connectInput->setMinimumWidth(defaultWidth);
+    connectInput->setFixedWidth(defaultWidth);
     connectInput->setFont(labelFont);
     connectLayout->addWidget(connectInput);
 
-    serialCommsLayout->addLayout(connectLayout);
+    connectBaud = new QComboBox();
+    connectBaud->setPlaceholderText("--Baud Rate--");
+    connectBaud->addItem("115200");
+    connectBaud->addItem("961200");
+    connectBaud->setFont(labelFont);
+    connectLayout->addWidget(connectBaud);
 
+    serialCommsLayout->addLayout(connectLayout);
 
     // ---------- Peek ----------
     QHBoxLayout* peekLayout = new QHBoxLayout();
@@ -138,6 +143,53 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
 
     // -------------------- Scope Controls --------------------
 
+    // ---------- Power On ----------
+
+    QHBoxLayout* powerLayout = new QHBoxLayout();
+    powerLayout->setAlignment(Qt::AlignLeft);
+
+    QPushButton* powerButton = new QPushButton("Power On");
+    powerButton->setFixedWidth(defaultWidth);
+    powerButton->setFont(buttonFont);
+    powerLayout->addWidget(powerButton);
+    connect(powerButton, SIGNAL(clicked()), SLOT(powerOn()));
+
+
+    scopeControlsLayout->addLayout(powerLayout);
+
+    // ---------- Transfer ----------
+
+    QHBoxLayout* transferLayout = new QHBoxLayout();
+    transferLayout->setAlignment(Qt::AlignLeft);
+
+    QPushButton* uartTransferButton = new QPushButton("Transfer - UART");
+    uartTransferButton->setFixedWidth(defaultWidth * 1.4);
+    uartTransferButton->setFont(buttonFont);
+    transferLayout->addWidget(uartTransferButton);
+    connect(uartTransferButton, SIGNAL(clicked()), SLOT(uartTransfer()));
+
+    QPushButton* vgaTransferButton = new QPushButton("Transfer - VGA");
+    vgaTransferButton->setFixedWidth(defaultWidth * 1.4);
+    vgaTransferButton->setFont(buttonFont);
+    transferLayout->addWidget(vgaTransferButton);
+    connect(vgaTransferButton, SIGNAL(clicked()), SLOT(vgaTransfer()));
+
+    scopeControlsLayout->addLayout(transferLayout);
+
+    // ---------- Read ----------
+
+    QHBoxLayout* readLayout = new QHBoxLayout();
+    readLayout->setAlignment(Qt::AlignLeft);
+
+    QPushButton* readButton = new QPushButton("Read");
+    readButton->setFixedWidth(defaultWidth);
+    readButton->setFont(buttonFont);
+    readLayout->addWidget(readButton);
+    connect(readButton, SIGNAL(clicked()), SLOT(read()));
+
+    scopeControlsLayout->addLayout(readLayout);
+
+
     // ---------- Gain ----------
 
     QHBoxLayout* gainLayout = new QHBoxLayout();
@@ -175,11 +227,23 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
 
     scopeControlsLayout->addLayout(triggerLayout);
 
+    connect(connectButton, SIGNAL(clicked()), SLOT(connectToRicharduino()));
     connect(peekButton, SIGNAL(clicked()), SLOT(peek()));
     connect(pokeButton, SIGNAL(clicked()), SLOT(poke()));
     connect(versionButton, SIGNAL(clicked()), SLOT(checkVersion()));
     connect(firmwareButton, SIGNAL(clicked()), SLOT(uploadFirmware()));
     connect(firmwareFileSelectButton, SIGNAL(clicked()), SLOT(browseFirmware()));
+}
+
+void SerialCommsWidget::connectToRicharduino() {
+    int port = connectInput->text().toInt();
+    int baudrate = connectBaud->currentText().toInt();
+    if(richarduino.connect(port, baudrate) != 1) {
+        std::cout << "Unable to connect to richarduino on port " << port << " at baud " << baudrate << std::endl;
+    } else {
+        std::cout << "Connected to richarduino on port " << port << " at baud " << baudrate << std::endl;
+    }
+
 }
 
 void SerialCommsWidget::peek() {
@@ -216,6 +280,32 @@ void SerialCommsWidget::uploadFirmware() {
         richarduino.program(firmware);
         firmwareLabel->setStyleSheet(completedLabelStyle);
     }
+}
+
+void SerialCommsWidget::powerOn() {
+    richarduino.poke(0xfffffff0, 1); // Set direction to ouput for pin 1
+    richarduino.poke(0xfffffff4, 1); // Turn on pin
+}
+
+void SerialCommsWidget::uartTransfer() {
+    richarduino.poke(0xffffffb8, 1); // Length
+    richarduino.poke(0xffffffbc, 0xffffffe4); // Uart tx addr
+    richarduino.poke(0xffffffb0, 1); // Go bit
+}
+
+void SerialCommsWidget::vgaTransfer() {
+    richarduino.poke(0xffffffb8, 1024);  // length
+    richarduino.poke(0xffffffbc, 0x20000); // start of framebuffer
+    richarduino.poke(0xffffffb0, 1);  // Go bit
+}
+
+void SerialCommsWidget::read() {
+    std::vector<char> data = richarduino.read(1000);
+    for(char c : data) {
+        std::cout << (int)c << " ";
+    }
+    std::cout << std::endl;
+
 }
 
 void SerialCommsWidget::setGain() {
