@@ -17,9 +17,9 @@ struct Richarduino {
     struct termios tty;
     int baud;
 
-    bool isProgrammed = false;
+    bool connected;
 
-    Richarduino(std::string location, int baud) : baud(baud) {
+    Richarduino(std::string location, int baud) : baud(baud), connected(false) {
         // serial tty code adapted from SerialPort_RevB Connor Monohan 2021
         // Open serial port connection
         portFd = open(location.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
@@ -41,7 +41,10 @@ struct Richarduino {
         if (tcsetattr(portFd, TCSANOW, &tty) != 0) {
             throw std::runtime_error("Failed to set serial port attributes");
         }
+        connected = true;
     }
+
+    Richarduino() : connected(false) {}
 
     ~Richarduino() { close(portFd); }
 
@@ -51,16 +54,31 @@ struct Richarduino {
             std::cout << "Error: Wrote <" << num_written << "> bytes, expected <" << data.size()
                       << ">" << std::endl;
         }
+
+        std::cout << std::hex << "Writing string data: " << data << std::endl;
+    }
+
+    void write(std::vector<uint8_t> data) {
+        int num_written = ::write(portFd, data.data(), data.size());
+        if (num_written < 0 || num_written < data.size()) {  // handle error
+            std::cout << "Error: Wrote <" << num_written << "> bytes, expected <" << data.size()
+                      << ">" << std::endl;
+        }
+        std::cout << std::hex << "Writing bytes: ";
+        for(const uint8_t dat : data) {
+            std::cout << (int)dat << " ";
+        }
+        endl(std::cout);
     }
 
     void write(uint32_t data) {
-        std::vector<char> dataBytes(4);
+        std::vector<uint8_t> dataBytes(4);
         // Convert data to bytes (big endian)
         dataBytes[0] = (data >> 24) & 0xFF;
         dataBytes[1] = (data >> 16) & 0xFF;
         dataBytes[2] = (data >> 8) & 0xFF;
         dataBytes[3] = data & 0xFF;
-        write(std::string(dataBytes.begin(), dataBytes.end()));
+        write(dataBytes);
     }
 
     std::vector<char> read(int n) {
@@ -84,14 +102,10 @@ struct Richarduino {
     }
 
     int version() {
-        if(!isProgrammed) {
-            write("V");
-            std::vector<char> response = read(1);
-            return std::stoi(std::string(response.begin(), response.end()));
-        } else {
-            std::cout << "Error: Can not check version after programming device" << std::endl;
-            return -1;
-        }
+        write("V");
+        std::vector<char> response = read(1);
+        return std::stoi(std::string(response.begin(), response.end()));
+
     }
 
     void program(std::vector<uint32_t> program) {
@@ -116,7 +130,6 @@ struct Richarduino {
             write(instruction);
         }
 
-        isProgrammed = true;
         std::cout << "Done uploading!" << std::endl;
     }
 
@@ -124,6 +137,7 @@ struct Richarduino {
         write("W");
         write(addr);
         write(data);
+        std::cout << "Poked " << std::hex << data << " to " << addr << std::endl;
     }
 
     int peek(uint32_t addr) {
@@ -139,6 +153,7 @@ struct Richarduino {
         responseInt |= (response[3] & 0xff);
 
         // std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Give time to respond
+        std::cout << "Peeked " << std::hex << responseInt << " from " << addr << std::endl;
         return responseInt;
     }
 };
