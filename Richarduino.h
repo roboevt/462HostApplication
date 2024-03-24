@@ -14,7 +14,7 @@
 #include <algorithm>
 
 struct Richarduino {
-    int portFd;
+    int port, portFd;
     struct termios tty;
     int baud;
 
@@ -22,7 +22,7 @@ struct Richarduino {
 
     std::vector<int> validBauds = {115200, 961200};
 
-    Richarduino(int port, int baud) : baud(baud), connected(false) {
+    Richarduino(int port, int baud) : port(port), baud(baud), connected(false) {
         // serial tty code adapted from SerialPort_RevB Connor Monohan 2021
 
         if(std::find(validBauds.begin(), validBauds.end(), baud) == validBauds.end()) {
@@ -54,6 +54,7 @@ struct Richarduino {
             throw std::runtime_error("Failed to set serial port attributes");
         }
         connected = true;
+        std::cout << "Connected to richarduino on port " << port << " at baud " << baud << std::endl;
     }
 
     Richarduino() : connected(false) {}
@@ -91,8 +92,11 @@ struct Richarduino {
             std::cout << "Failed to set serial port attributes" << std::endl;
             return -3;
         }
-        connected = true;
 
+        connected = true;
+        this->port = port;
+        this->baud = baud;
+        std::cout << "Connected to richarduino on port " << port << " at baud " << baud << std::endl;
         return 1;
     }
 

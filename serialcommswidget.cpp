@@ -9,7 +9,7 @@
 #include <fstream>
 
 SerialCommsWidget::SerialCommsWidget(QWidget* parent)
-    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12) {
+    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 115200) {
     this->setMinimumWidth(defaultWidth * 3);
 
     QGridLayout* totalLayout = new QGridLayout(this);
@@ -47,10 +47,19 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
 
     connectBaud = new QComboBox();
     connectBaud->setPlaceholderText("--Baud Rate--");
-    connectBaud->addItem("115200");
-    connectBaud->addItem("961200");
+    connectBaud->addItem("115200", 115200);
+    connectBaud->addItem("961200", 115200);
     connectBaud->setFont(labelFont);
     connectLayout->addWidget(connectBaud);
+
+    if(richarduino.connected) {
+        connectInput->setText(QString::number(richarduino.port));
+        int index = connectBaud->findData(richarduino.baud);
+        if ( index != -1 ) { // -1 for not found
+            connectBaud->setCurrentIndex(index);
+        }
+
+    }
 
     serialCommsLayout->addLayout(connectLayout);
 
@@ -240,10 +249,7 @@ void SerialCommsWidget::connectToRicharduino() {
     int baudrate = connectBaud->currentText().toInt();
     if(richarduino.connect(port, baudrate) != 1) {
         std::cout << "Unable to connect to richarduino on port " << port << " at baud " << baudrate << std::endl;
-    } else {
-        std::cout << "Connected to richarduino on port " << port << " at baud " << baudrate << std::endl;
     }
-
 }
 
 void SerialCommsWidget::peek() {
@@ -300,9 +306,9 @@ void SerialCommsWidget::vgaTransfer() {
 }
 
 void SerialCommsWidget::read() {
-    std::vector<char> data = richarduino.read(1000);
+    std::vector<char> data = richarduino.read(4095);
     for(char c : data) {
-        std::cout << (int)c << " ";
+        std::cout << (short)c << " ";
     }
     std::cout << std::endl;
 
