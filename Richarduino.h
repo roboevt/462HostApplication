@@ -20,7 +20,7 @@ struct Richarduino {
 
     bool connected;
 
-    std::vector<int> validBauds = {115200, 961200};
+    std::vector<int> validBauds = {115200, 921600};
 
     Richarduino(int port, int baud) : port(port), baud(baud), connected(false) {
         // serial tty code adapted from SerialPort_RevB Connor Monohan 2021

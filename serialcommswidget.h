@@ -50,6 +50,8 @@ class SerialCommsWidget : public QWidget
 public:
     SerialCommsWidget(QWidget* parent = nullptr);
 
+    std::array<uint8_t, 4095> samples;
+
 
 public Q_SLOTS:
     void connectToRicharduino();

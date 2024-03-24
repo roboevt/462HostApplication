@@ -8,6 +8,8 @@
 #include <QSpinBox>
 #include <QComboBox>
 
+#include "serialcommswidget.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -24,9 +26,18 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    SerialCommsWidget* serialComms;
+
+    QLabel* oscopeLabel;
 
     QString labelStyle = "border:1px solid black";
     QString completedLabelStyle = "border:1px solid green";
+
+    int scopeWidth = 800;
+    int scopeHeight = 400;
+
+public Q_SLOTS:
+    void updateDisplay();
 
 };
 #endif // MAINWINDOW_H

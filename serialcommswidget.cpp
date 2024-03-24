@@ -9,7 +9,7 @@
 #include <fstream>
 
 SerialCommsWidget::SerialCommsWidget(QWidget* parent)
-    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 115200) {
+    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 921600) {
     this->setMinimumWidth(defaultWidth * 3);
 
     QGridLayout* totalLayout = new QGridLayout(this);
@@ -48,7 +48,7 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     connectBaud = new QComboBox();
     connectBaud->setPlaceholderText("--Baud Rate--");
     connectBaud->addItem("115200", 115200);
-    connectBaud->addItem("961200", 115200);
+    connectBaud->addItem("921600", 921600);
     connectBaud->setFont(labelFont);
     connectLayout->addWidget(connectBaud);
 
@@ -242,6 +242,8 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     connect(versionButton, SIGNAL(clicked()), SLOT(checkVersion()));
     connect(firmwareButton, SIGNAL(clicked()), SLOT(uploadFirmware()));
     connect(firmwareFileSelectButton, SIGNAL(clicked()), SLOT(browseFirmware()));
+
+    read();
 }
 
 void SerialCommsWidget::connectToRicharduino() {
@@ -307,11 +309,15 @@ void SerialCommsWidget::vgaTransfer() {
 
 void SerialCommsWidget::read() {
     std::vector<char> data = richarduino.read(4095);
-    for(char c : data) {
-        std::cout << (short)c << " ";
-    }
-    std::cout << std::endl;
 
+    // for(char c : data) {
+    //     std::cout << std::dec << ((short)c & 0xff) << " ";
+    // }
+    // std::cout << std::endl << std::endl;
+
+    for(int i = 0; i < data.size(); i++) {
+        samples[i] = data[i];
+    }
 }
 
 void SerialCommsWidget::setGain() {
