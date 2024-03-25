@@ -60,8 +60,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(scopeTimer, SIGNAL(timeout()), this, SLOT(updateDisplay()));
 
     const float idealInterval = (numSamples/44100.0f)*1000;
-    // scopeTimer->start(std::floor(idealInterval));  // we should read 4095 bytes every 92.8571 ms
-    scopeTimer->start(20);
+    std::cout << "Reading at an interval of " << idealInterval << "ms" << std::endl;
+    scopeTimer->start(std::floor(idealInterval));  // we should read 4095 bytes every 92.8571 ms
+    // scopeTimer->start(20);
 
 
     window->setMinimumWidth(scopeWidth);
@@ -82,7 +83,7 @@ void MainWindow::updateDisplay() {
     pixmap.fill(QColor("black"));
 
     QPainter painter(&pixmap);
-    // painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setRenderHint(QPainter::Antialiasing, true);
     QPen pen(Qt::white);
     pen.setWidth(3);
     painter.setPen(pen);
