@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <map>
 
 SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 921600) {
@@ -210,11 +211,18 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     gainLayout->addWidget(gainButton);
     connect(gainButton, SIGNAL(clicked()), SLOT(setGain()));
 
-    gainInput = new QSpinBox();
+    gainInput = new QComboBox();
     gainInput->setMinimumWidth(defaultWidth);
-    gainInput->setMinimum(1);
-    gainInput->setMaximum(50);
-    gainInput->setSuffix("x");
+    gainInput->addItem("0.25");
+    gainInput->addItem("1");
+    gainInput->addItem("10");
+    gainInput->addItem("20");
+    gainInput->addItem("30");
+    gainInput->addItem("40");
+    gainInput->addItem("60");
+    gainInput->addItem("80");
+    gainInput->addItem("120");
+    gainInput->addItem("157");
     gainLayout->addWidget(gainInput);
 
     scopeControlsLayout->addLayout(gainLayout);
@@ -334,9 +342,14 @@ void SerialCommsWidget::read(int num) {
     }
 }
 
+const std::map<std::string, uint8_t> gainMap{{"1", 0b00000001}, {"10", 0b0000011}, {"20",0b0000101}, {"30",0b0000111}, {"40",0b0001001},{"60",0b0001011},{"80",0b0001101},{"120",0b0001111},{"157",0b0010001},{"0.25",0b0010011},{".25",0b0010011}};
+
 void SerialCommsWidget::setGain() {
-    int gain = gainInput->value();
-    std::cout << "Setting gain (" << gain << ") not yet implemented" << std::endl;
+    std::string gain = gainInput->currentText().toStdString();
+    if(gainMap.count(gain) > 0) {
+        richarduino.poke(0xffffffc4, gainMap.at(gain));
+    }
+    // std::cout << "Setting gain (" << gain << ") not yet implemented" << std::endl;
 }
 
 void SerialCommsWidget::setTrigger() {

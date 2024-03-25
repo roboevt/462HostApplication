@@ -37,7 +37,7 @@ class SerialCommsWidget : public QWidget
     QLineEdit* peekInput;
     QLineEdit* pokeAddressInput, *pokeDataInput;
 
-    QSpinBox* gainInput;
+    QComboBox* gainInput;
     QComboBox* triggerInput;
 
     QString labelStyle = "border:1px solid black";
