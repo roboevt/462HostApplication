@@ -134,32 +134,34 @@ struct Richarduino {
     }
 
     std::vector<char> read(int n) {
+        std::vector<char> data(n);
+        int numRead = 0;
+
         if(n > 128) {  // "Large read"
-            std::vector<char> samples(n);
-            int numRead = 0;
-            while(numRead < n) {
-                numRead += ::read(portFd, samples.data() + numRead, n - numRead);
+            int attempts = 0;
+            while(numRead < n && attempts++ < 10) {
+                numRead += ::read(portFd, data.data() + numRead, n - numRead);
             }
-            return samples;
+
         } else {
-            std::vector<char> data(n);
             int numRead = ::read(portFd, data.data(), n);
-
-            if (numRead == n) {
-                return data;
-            }
-
-            // Did not read expected number of bytes
-            std::cout << "Error: Read <" << numRead << "> bytes, expected <" << n << ">" << std::endl;
-
-            if (numRead > 0) {
-                return std::vector<char>(data.begin(), data.begin() + numRead);
-            }
-
-            // No bytes read
-            perror("Error reading from serial port");
-            return std::vector<char>(n, '0');
         }
+
+        if (numRead == n) {
+            return data;
+        }
+
+        // Did not read expected number of bytes
+        std::cout << "Error: Read <" << numRead << "> bytes, expected <" << n << ">" << std::endl;
+
+        if (numRead > 0) {
+            return std::vector<char>(data.begin(), data.begin() + numRead);
+        }
+
+        // No bytes read
+        perror("Error reading from serial port");
+        return std::vector<char>(n, '0');
+
     }
 
     int version() {

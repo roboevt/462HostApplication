@@ -38,6 +38,7 @@ class SerialCommsWidget : public QWidget
     QLineEdit* pokeAddressInput, *pokeDataInput;
 
     QComboBox* gainInput;
+    QComboBox* offsetInput;
     QComboBox* triggerInput;
 
     QString labelStyle = "border:1px solid black";
@@ -64,9 +65,10 @@ public Q_SLOTS:
     void powerOn();
     void uartTransfer();
     void vgaTransfer();
-    void read();
+    // void read();
     void read(int samples);
     void setGain();
+    void setOffset();
     void setTrigger();
 
 };

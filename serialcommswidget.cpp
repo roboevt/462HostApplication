@@ -189,16 +189,16 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
 
     // ---------- Read ----------
 
-    QHBoxLayout* readLayout = new QHBoxLayout();
-    readLayout->setAlignment(Qt::AlignLeft);
+    // QHBoxLayout* readLayout = new QHBoxLayout();
+    // readLayout->setAlignment(Qt::AlignLeft);
 
-    QPushButton* readButton = new QPushButton("Read");
-    readButton->setFixedWidth(defaultWidth);
-    readButton->setFont(buttonFont);
-    readLayout->addWidget(readButton);
-    connect(readButton, SIGNAL(clicked()), SLOT(read()));
+    // QPushButton* readButton = new QPushButton("Read");
+    // readButton->setFixedWidth(defaultWidth);
+    // readButton->setFont(buttonFont);
+    // readLayout->addWidget(readButton);
+    // connect(readButton, SIGNAL(clicked()), SLOT(read()));
 
-    scopeControlsLayout->addLayout(readLayout);
+    // scopeControlsLayout->addLayout(readLayout);
 
 
     // ---------- Gain ----------
@@ -227,6 +227,38 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
 
     scopeControlsLayout->addLayout(gainLayout);
 
+    // ---------- Offset ----------
+
+    QHBoxLayout* offsetLayout = new QHBoxLayout();
+
+    QPushButton* offsetButton = new QPushButton("Set Offset");
+    offsetButton->setFixedWidth(defaultWidth);
+    offsetButton->setFont(buttonFont);
+    offsetLayout->addWidget(offsetButton);
+    connect(offsetButton, SIGNAL(clicked()), SLOT(setOffset()));
+
+    offsetInput = new QComboBox();
+    offsetInput->setMinimumWidth(defaultWidth);
+    offsetInput->addItem("-17.6");
+    offsetInput->addItem("-16.7");
+    offsetInput->addItem("-15.7");
+    offsetInput->addItem("-14.7");
+    offsetInput->addItem("-13.7");
+    offsetInput->addItem("-12.7");
+    offsetInput->addItem("-11.7");
+    offsetInput->addItem("-10.6");
+    offsetInput->addItem("-8.4");
+    offsetInput->addItem("-7.3");
+    offsetInput->addItem("-6.1");
+    offsetInput->addItem("-4.9");
+    offsetInput->addItem("-3.8");
+    offsetInput->addItem("-2.5");
+    offsetInput->addItem("-1.3");
+    offsetInput->addItem("0");
+    offsetLayout->addWidget(offsetInput);
+
+    scopeControlsLayout->addLayout(offsetLayout);
+
     // ---------- Trigger ----------
     QHBoxLayout* triggerLayout = new QHBoxLayout();
 
@@ -252,7 +284,7 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     connect(firmwareButton, SIGNAL(clicked()), SLOT(uploadFirmware()));
     connect(firmwareFileSelectButton, SIGNAL(clicked()), SLOT(browseFirmware()));
 
-    read();
+    // read();
 }
 
 void SerialCommsWidget::connectToRicharduino() {
@@ -316,18 +348,18 @@ void SerialCommsWidget::vgaTransfer() {
     richarduino.poke(0xffffffb0, 1);  // Go bit
 }
 
-void SerialCommsWidget::read() {
-    std::vector<char> data = richarduino.read(4095);
+// void SerialCommsWidget::read() {
+//     std::vector<char> data = richarduino.read(4095);
 
-    // for(char c : data) {
-    //     std::cout << std::dec << ((short)c & 0xff) << " ";
-    // }
-    // std::cout << std::endl << std::endl;
+//     // for(char c : data) {
+//     //     std::cout << std::dec << ((short)c & 0xff) << " ";
+//     // }
+//     // std::cout << std::endl << std::endl;
 
-    for(int i = 0; i < data.size(); i++) {
-        samples[i] = data[i];
-    }
-}
+//     for(int i = 0; i < data.size(); i++) {
+//         samples[i] = data[i];
+//     }
+// }
 
 void SerialCommsWidget::read(int num) {
     std::vector<char> data = richarduino.read(num);
@@ -342,12 +374,21 @@ void SerialCommsWidget::read(int num) {
     }
 }
 
-const std::map<std::string, uint8_t> gainMap{{"1", 0b00000001}, {"10", 0b0000011}, {"20",0b0000101}, {"30",0b0000111}, {"40",0b0001001},{"60",0b0001011},{"80",0b0001101},{"120",0b0001111},{"157",0b0010001},{"0.25",0b0010011},{".25",0b0010011}};
+const static std::map<std::string, uint8_t> gainMap{{"1", 0b00000001}, {"10", 0b0000011}, {"20",0b0000101}, {"30",0b0000111}, {"40",0b0001001},{"60",0b0001011},{"80",0b0001101},{"120",0b0001111},{"157",0b0010001},{"0.25",0b0010011},{".25",0b0010011}};
+const static std::map<std::string, uint8_t> offsetMap{{"-17.6",0x3e},{"-16.7",0x3c},{"-15.7",0x3a},{"-14.7",0x38},{"-13.7",0x36},{"-12.7",0x34},{"-11.7",0x32},{"-10.6",0x30},{"-8.4",0x2e},{"-7.3",0x2c},{"-6.1",0x2a},{"-4.9",0x28},{"-3.8",0x26},{"-2.5",0x24},{"-1.3",0x22},{"0",0}};
 
 void SerialCommsWidget::setGain() {
     std::string gain = gainInput->currentText().toStdString();
     if(gainMap.count(gain) > 0) {
         richarduino.poke(0xffffffc4, gainMap.at(gain));
+    }
+    // std::cout << "Setting gain (" << gain << ") not yet implemented" << std::endl;
+}
+
+void SerialCommsWidget::setOffset() {
+    std::string offset = offsetInput->currentText().toStdString();
+    if(offsetMap.count(offset) > 0) {
+        richarduino.poke(0xffffffc4, offsetMap.at(offset));
     }
     // std::cout << "Setting gain (" << gain << ") not yet implemented" << std::endl;
 }

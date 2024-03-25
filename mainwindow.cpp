@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    this->setWindowTitle("Richarduino Host Application");
+    this->setWindowTitle("Eric Todd Richarduino Host Application");
 
     // -------------------- Setup --------------------
 
@@ -61,8 +61,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     const float idealInterval = (numSamples/44100.0f)*1000;
     std::cout << "Reading at an interval of " << idealInterval << "ms" << std::endl;
-    scopeTimer->start(std::floor(idealInterval));  // we should read 4095 bytes every 92.8571 ms
-    // scopeTimer->start(20);
+    // scopeTimer->start(std::floor(idealInterval));  // we should read 4095 bytes every 92.8571 ms
+    scopeTimer->start(20);
 
 
     window->setMinimumWidth(scopeWidth);
@@ -84,6 +84,8 @@ void MainWindow::updateDisplay() {
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setWindow(0,0,scopeWidth,255);
+
     QPen pen(Qt::white);
     pen.setWidth(3);
     painter.setPen(pen);
@@ -91,7 +93,8 @@ void MainWindow::updateDisplay() {
     QPainterPath path;
     for(int i = 0; i < numSamples; i++) {
         const float x = ((float)i / numSamples) * scopeWidth;
-        const float y = (serialComms->samples[i] - 0xff/2) * (scopeHeight/0xff) + (scopeHeight/2);
+        // const float y = (serialComms->samples[i] - 0xff/2) * (scopeHeight/0xff) + (scopeHeight/2);
+        const float y = 255 - serialComms->samples[i];
         path.lineTo(QPointF(x, y));
         // path.lineTo(QPointF(x, -180*(sin(0.05 * (x-100))/(0.05 * (x-100)))+800/2));
     }
