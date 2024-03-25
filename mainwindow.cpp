@@ -10,6 +10,8 @@
 #include <QPainter>
 #include <QPainterPath>
 
+#include <cmath>
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -45,12 +47,21 @@ MainWindow::MainWindow(QWidget *parent)
     // painter.drawPath(path2);
 
     oscopeLabel = new QLabel();
+    oscopeLabel->setMinimumSize(scopeWidth, scopeHeight);
+    // QSizePolicy oscopeSizePolicy(QSizePolicy::Expanding);
+    oscopeLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     // oscopeLabel->setPixmap(pixmap);
-    totalLayout->addWidget(oscopeLabel, 1, 0, 1, 2);
+    QBoxLayout* scopeLayout = new QHBoxLayout();
+    scopeLayout->addWidget(oscopeLabel);
+    totalLayout->addLayout(scopeLayout, 1, 0, 1, 2);
+    // totalLayout->addWidget(oscopeLabel, 1, 0, 1, 2, Qt::AlignAbsolute);
 
-    QTimer *timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(updateDisplay()));
-    timer->start(93);  // we should read 4095 bytes every 92.8571 ms
+    scopeTimer = new QTimer(this);
+    connect(scopeTimer, SIGNAL(timeout()), this, SLOT(updateDisplay()));
+
+    const float idealInterval = (numSamples/44100.0f)*1000;
+    // scopeTimer->start(std::floor(idealInterval));  // we should read 4095 bytes every 92.8571 ms
+    scopeTimer->start(20);
 
 
     window->setMinimumWidth(scopeWidth);
@@ -62,20 +73,25 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 void MainWindow::updateDisplay() {
-    serialComms->read();
+    scopeWidth = oscopeLabel->width();
+    scopeHeight = oscopeLabel->height();
+
+    serialComms->read(numSamples);
 
     QPixmap pixmap = QPixmap(scopeWidth, scopeHeight);
     pixmap.fill(QColor("black"));
 
     QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing, true);
+    // painter.setRenderHint(QPainter::Antialiasing, true);
     QPen pen(Qt::white);
     pen.setWidth(3);
     painter.setPen(pen);
 
     QPainterPath path;
-    for(double x = 0; x < scopeWidth; x++) {
-        path.lineTo(QPointF(x, serialComms->samples[x]));
+    for(int i = 0; i < numSamples; i++) {
+        const float x = ((float)i / numSamples) * scopeWidth;
+        const float y = (serialComms->samples[i] - 0xff/2) * (scopeHeight/0xff) + (scopeHeight/2);
+        path.lineTo(QPointF(x, y));
         // path.lineTo(QPointF(x, -180*(sin(0.05 * (x-100))/(0.05 * (x-100)))+800/2));
     }
     painter.drawPath(path);

@@ -29,10 +29,12 @@ private:
     SerialCommsWidget* serialComms;
 
     QLabel* oscopeLabel;
+    QTimer *scopeTimer;
 
     QString labelStyle = "border:1px solid black";
     QString completedLabelStyle = "border:1px solid green";
 
+    int numSamples = 882;
     int scopeWidth = 800;
     int scopeHeight = 400;
 

@@ -65,6 +65,7 @@ public Q_SLOTS:
     void uartTransfer();
     void vgaTransfer();
     void read();
+    void read(int samples);
     void setGain();
     void setTrigger();
 

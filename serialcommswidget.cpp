@@ -14,6 +14,7 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
 
     QGridLayout* totalLayout = new QGridLayout(this);
     totalLayout->setSizeConstraint(QGridLayout::SetMinimumSize);
+    totalLayout->setAlignment(Qt::AlignTop);
 
     QWidget* serialCommsBox = new QWidget();
     serialCommsBox->setMinimumWidth(defaultWidth * 3);
@@ -302,13 +303,26 @@ void SerialCommsWidget::uartTransfer() {
 }
 
 void SerialCommsWidget::vgaTransfer() {
-    richarduino.poke(0xffffffb8, 1024);  // length
-    richarduino.poke(0xffffffbc, 0x20000); // start of framebuffer
+    richarduino.poke(0xffffffb8, 500000);  // length
+    richarduino.poke(0xffffffbc, 0x200000); // start of framebuffer
     richarduino.poke(0xffffffb0, 1);  // Go bit
 }
 
 void SerialCommsWidget::read() {
     std::vector<char> data = richarduino.read(4095);
+
+    // for(char c : data) {
+    //     std::cout << std::dec << ((short)c & 0xff) << " ";
+    // }
+    // std::cout << std::endl << std::endl;
+
+    for(int i = 0; i < data.size(); i++) {
+        samples[i] = data[i];
+    }
+}
+
+void SerialCommsWidget::read(int num) {
+    std::vector<char> data = richarduino.read(num);
 
     // for(char c : data) {
     //     std::cout << std::dec << ((short)c & 0xff) << " ";
