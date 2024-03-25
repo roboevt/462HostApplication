@@ -84,12 +84,19 @@ void MainWindow::updateDisplay() {
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing, true);
-    painter.setWindow(0,0,scopeWidth,255);
+
 
     QPen pen(Qt::white);
+    pen.setWidth(1);
+    painter.setPen(pen);
+    painter.setFont(QFont("Arial", 18));
+    painter.drawText(QPoint(5,23), "3.3V");
+    painter.drawText(QPoint(5,scopeHeight-5), "-3.3V");
+    painter.drawLine(0,scopeHeight/2,scopeWidth,scopeHeight/2);
+
+    painter.setWindow(0,0,scopeWidth,255);
     pen.setWidth(3);
     painter.setPen(pen);
-
     QPainterPath path;
     for(int i = 0; i < numSamples; i++) {
         const float x = ((float)i / numSamples) * scopeWidth;
