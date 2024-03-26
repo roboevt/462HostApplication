@@ -10,7 +10,8 @@
 #include <map>
 
 SerialCommsWidget::SerialCommsWidget(QWidget* parent)
-    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 921600) {
+    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 921600), triggerMode(TriggerMode::level) {
+    std::fill(samples.begin(), samples.end(), 0);
     this->setMinimumWidth(defaultWidth * 3);
 
     QGridLayout* totalLayout = new QGridLayout(this);
@@ -26,7 +27,7 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     serialCommsLayout->setAlignment(Qt::AlignTop);
 
     QWidget* scopeControlsBox = new QWidget();
-    scopeControlsBox->setMinimumWidth(defaultWidth * 3);
+    scopeControlsBox->setMinimumWidth(defaultWidth * 3 + 30);
     scopeControlsBox->setStyleSheet("background-color: grey");
     totalLayout->addWidget(scopeControlsBox, 0, 1);
 
@@ -165,41 +166,44 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     powerLayout->addWidget(powerButton);
     connect(powerButton, SIGNAL(clicked()), SLOT(powerOn()));
 
+    scopeControlsLayout->addLayout(powerLayout);
+
+    QPushButton* scopeStartButton = new QPushButton("Start Scope");
+    scopeStartButton->setFixedWidth(defaultWidth);
+    scopeStartButton->setFont(buttonFont);
+    powerLayout->addWidget(scopeStartButton);
+    connect(scopeStartButton, SIGNAL(clicked()), SLOT(startScope()));
+
+    QPushButton* scopeStopButton = new QPushButton("Stop Scope");
+    scopeStopButton->setFixedWidth(defaultWidth);
+    scopeStopButton->setFont(buttonFont);
+    powerLayout->addWidget(scopeStopButton);
+    connect(scopeStopButton, SIGNAL(clicked()), SLOT(stopScope()));
 
     scopeControlsLayout->addLayout(powerLayout);
+
+    connect(scopeStartButton, SIGNAL(clicked()), this, SLOT(startScope()));
+    connect(scopeStopButton, SIGNAL(clicked()), this, SLOT(stopScope()));
 
     // ---------- Transfer ----------
 
     QHBoxLayout* transferLayout = new QHBoxLayout();
     transferLayout->setAlignment(Qt::AlignLeft);
 
-    QPushButton* uartTransferButton = new QPushButton("Transfer - UART");
-    uartTransferButton->setFixedWidth(defaultWidth * 1.4);
-    uartTransferButton->setFont(buttonFont);
-    transferLayout->addWidget(uartTransferButton);
-    connect(uartTransferButton, SIGNAL(clicked()), SLOT(uartTransfer()));
+    QPushButton* transferButton = new QPushButton("Transfer");
+    transferButton->setFixedWidth(defaultWidth);
+    transferButton->setFont(buttonFont);
+    transferLayout->addWidget(transferButton);
+    connect(transferButton, SIGNAL(clicked()), SLOT(transfer()));
 
-    QPushButton* vgaTransferButton = new QPushButton("Transfer - VGA");
-    vgaTransferButton->setFixedWidth(defaultWidth * 1.4);
-    vgaTransferButton->setFont(buttonFont);
-    transferLayout->addWidget(vgaTransferButton);
-    connect(vgaTransferButton, SIGNAL(clicked()), SLOT(vgaTransfer()));
-
+    transferInput = new QComboBox();
+    transferInput->setMinimumWidth(defaultWidth);
+    transferInput->addItem("UART");
+    transferInput->addItem("VGA");
+    transferInput->addItem("Disable");
+    transferInput->setFont(labelFont);
+    transferLayout->addWidget(transferInput);
     scopeControlsLayout->addLayout(transferLayout);
-
-    // ---------- Read ----------
-
-    // QHBoxLayout* readLayout = new QHBoxLayout();
-    // readLayout->setAlignment(Qt::AlignLeft);
-
-    // QPushButton* readButton = new QPushButton("Read");
-    // readButton->setFixedWidth(defaultWidth);
-    // readButton->setFont(buttonFont);
-    // readLayout->addWidget(readButton);
-    // connect(readButton, SIGNAL(clicked()), SLOT(read()));
-
-    // scopeControlsLayout->addLayout(readLayout);
-
 
     // ---------- Gain ----------
 
@@ -223,6 +227,7 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     gainInput->addItem("80");
     gainInput->addItem("120");
     gainInput->addItem("157");
+    gainInput->setFont(labelFont);
     gainLayout->addWidget(gainInput);
 
     scopeControlsLayout->addLayout(gainLayout);
@@ -255,6 +260,7 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     offsetInput->addItem("-2.5");
     offsetInput->addItem("-1.3");
     offsetInput->addItem("0");
+    offsetInput->setFont(labelFont);
     offsetLayout->addWidget(offsetInput);
 
     scopeControlsLayout->addLayout(offsetLayout);
@@ -269,9 +275,8 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     connect(triggerButton, SIGNAL(clicked()), SLOT(setTrigger()));
 
     triggerInput = new QComboBox();
-    triggerInput->addItem("Rising Edge");
-    triggerInput->addItem("Falling Edge");
     triggerInput->addItem("Level"); // Add level input
+    triggerInput->addItem("Disabled");
     triggerInput->setFont(labelFont);
     triggerLayout->addWidget(triggerInput);
 
@@ -336,30 +341,52 @@ void SerialCommsWidget::powerOn() {
     richarduino.poke(0xfffffff4, 1); // Turn on pin
 }
 
-void SerialCommsWidget::uartTransfer() {
-    richarduino.poke(0xffffffb8, 1); // Length
-    richarduino.poke(0xffffffbc, 0xffffffe4); // Uart tx addr
-    richarduino.poke(0xffffffb0, 1); // Go bit
+void SerialCommsWidget::startScope() {
+    worker = std::jthread{ [this] (std::stop_token token) {
+            while(!token.stop_requested()) {
+                auto newSamples = richarduino.read(samples.size());
+
+                if(triggerMode == TriggerMode::level) {
+                    int triggerPos = 0;
+                    for(int i = 1; i < newSamples.size(); i++) {
+                        const int sample = (int)newSamples[i] & 0xff;
+                        const int lastSample = (int)newSamples[i-1] & 0xff;
+                        if(sample >= triggerLevel && lastSample < triggerLevel) {
+                            triggerPos = i;
+                            break;
+                        }
+                    }
+                    // std::cout << "Found at pos " << triggerPos << std::endl;
+                    std::copy(newSamples.begin() + triggerPos, newSamples.end(), samples.begin());
+                } else {
+                   std::copy(newSamples.begin(), newSamples.end(), samples.begin());
+                }
+                // Request new frame to be drawn.
+                emit newSamplesAvailable();
+            }
+    }};
 }
 
-void SerialCommsWidget::vgaTransfer() {
-    richarduino.poke(0xffffffb8, 500000);  // length
-    richarduino.poke(0xffffffbc, 0x200000); // start of framebuffer
-    richarduino.poke(0xffffffb0, 1);  // Go bit
+void SerialCommsWidget::stopScope() {
+    worker.request_stop();
 }
 
-// void SerialCommsWidget::read() {
-//     std::vector<char> data = richarduino.read(4095);
-
-//     // for(char c : data) {
-//     //     std::cout << std::dec << ((short)c & 0xff) << " ";
-//     // }
-//     // std::cout << std::endl << std::endl;
-
-//     for(int i = 0; i < data.size(); i++) {
-//         samples[i] = data[i];
-//     }
-// }
+void SerialCommsWidget::transfer() {
+    QString transferMode = transferInput->currentText();
+    if(transferMode == "UART") {
+        richarduino.poke(0xffffffb8, 1); // Length
+        richarduino.poke(0xffffffbc, 0xffffffe4); // Uart tx addr
+        richarduino.poke(0xffffffb0, 1); // Go bit
+    } else if(transferMode == "VGA") {
+        richarduino.poke(0xffffffb8, 500000);  // length
+        richarduino.poke(0xffffffbc, 0x200000); // start of framebuffer
+        richarduino.poke(0xffffffb0, 1);  // Go bit
+    } else if(transferMode == "Disable") {
+        richarduino.poke(0xffffffb0, 0); // Go bit
+    } else {
+        std::cout << "Invalid transfer mode " << transferMode.toStdString() << std::endl;
+    }
+}
 
 void SerialCommsWidget::read(int num) {
     std::vector<char> data = richarduino.read(num);
@@ -395,7 +422,15 @@ void SerialCommsWidget::setOffset() {
 
 void SerialCommsWidget::setTrigger() {
     QString trigger = triggerInput->currentText();
-    std::cout << "Setting trigger (" << trigger.toStdString() << ") not yet implemented" << std::endl;
+    if(trigger == "Level") {
+        triggerMode = TriggerMode::level;
+        std::cout << "Trigger mode set to " << trigger.toStdString() << std::endl;
+    } else if(trigger == "Disabled") {
+        triggerMode = TriggerMode::disabled;
+        std::cout << "Trigger mode set to " << trigger.toStdString() << std::endl;
+    } else {
+        std::cout << "Setting trigger (" << trigger.toStdString() << ") not yet implemented" << std::endl;
+    }
 }
 
 std::vector<uint32_t> SerialCommsWidget::readFirmwareFile(std::string firmwarePath) {
@@ -424,4 +459,8 @@ std::vector<uint32_t> SerialCommsWidget::readFirmwareFile(std::string firmwarePa
     dec(std::cout);
 
     return firmware;
+}
+
+SerialCommsWidget::~SerialCommsWidget() {
+    stopScope();
 }

@@ -139,7 +139,7 @@ struct Richarduino {
 
         if(n > 128) {  // "Large read"
             int attempts = 0;
-            while(numRead < n && attempts++ < 10) {
+            while(numRead < n && attempts++ < 10) {  // limit hangs waiting for data that will never come
                 numRead += ::read(portFd, data.data() + numRead, n - numRead);
             }
 

@@ -7,6 +7,7 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QComboBox>
+#include <thread>
 
 #include "Richarduino.h"
 
@@ -37,6 +38,8 @@ class SerialCommsWidget : public QWidget
     QLineEdit* peekInput;
     QLineEdit* pokeAddressInput, *pokeDataInput;
 
+    QComboBox* transferInput;
+
     QComboBox* gainInput;
     QComboBox* offsetInput;
     QComboBox* triggerInput;
@@ -48,8 +51,14 @@ class SerialCommsWidget : public QWidget
 
     std::vector<uint32_t> readFirmwareFile(std::string firmwarePath);
 
+    std::jthread worker;
+
+    enum class TriggerMode { disabled, level } triggerMode;
+    uint8_t triggerLevel = 127; // todo adjustable
+
 public:
     SerialCommsWidget(QWidget* parent = nullptr);
+    ~SerialCommsWidget();
 
     std::array<uint8_t, 4095> samples;
 
@@ -63,13 +72,17 @@ public Q_SLOTS:
     void uploadFirmware();
 
     void powerOn();
-    void uartTransfer();
-    void vgaTransfer();
+    void transfer();
+    void startScope();
+    void stopScope();
     // void read();
     void read(int samples);
     void setGain();
     void setOffset();
     void setTrigger();
+
+signals:
+    void newSamplesAvailable();
 
 };
 

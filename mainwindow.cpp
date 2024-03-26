@@ -10,8 +10,6 @@
 #include <QPainter>
 #include <QPainterPath>
 
-#include <cmath>
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -57,12 +55,14 @@ MainWindow::MainWindow(QWidget *parent)
     // totalLayout->addWidget(oscopeLabel, 1, 0, 1, 2, Qt::AlignAbsolute);
 
     scopeTimer = new QTimer(this);
-    connect(scopeTimer, SIGNAL(timeout()), this, SLOT(updateDisplay()));
+    // connect(scopeTimer, SIGNAL(timeout()), this, SLOT(updateDisplay()));
+    connect(serialComms, SIGNAL(newSamplesAvailable()), this, SLOT(updateDisplay()));
 
-    const float idealInterval = (numSamples/44100.0f)*1000;
-    std::cout << "Reading at an interval of " << idealInterval << "ms" << std::endl;
+
+    // const float idealInterval = (numSamples/44100.0f)*1000;
+    // std::cout << "Reading at an interval of " << idealInterval << "ms" << std::endl;
     // scopeTimer->start(std::floor(idealInterval));  // we should read 4095 bytes every 92.8571 ms
-    scopeTimer->start(20);
+    // scopeTimer->start(20);
 
 
     window->setMinimumWidth(scopeWidth);
@@ -77,7 +77,7 @@ void MainWindow::updateDisplay() {
     scopeWidth = oscopeLabel->width();
     scopeHeight = oscopeLabel->height();
 
-    serialComms->read(numSamples);
+    // serialComms->read(numSamples);
 
     QPixmap pixmap = QPixmap(scopeWidth, scopeHeight);
     pixmap.fill(QColor("black"));
