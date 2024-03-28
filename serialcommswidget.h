@@ -53,7 +53,7 @@ class SerialCommsWidget : public QWidget
 
     std::jthread worker;
 
-    enum class TriggerMode { disabled, level } triggerMode;
+    enum class TriggerMode { disabled, risingEdge, fallingEdge } triggerMode;
     uint8_t triggerLevel = 127; // todo adjustable
 
 public:

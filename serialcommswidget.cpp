@@ -10,7 +10,7 @@
 #include <map>
 
 SerialCommsWidget::SerialCommsWidget(QWidget* parent)
-    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 921600), triggerMode(TriggerMode::level) {
+    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 921600), triggerMode(TriggerMode::risingEdge) {
     std::fill(samples.begin(), samples.end(), 0);
     this->setMinimumWidth(defaultWidth * 3);
 
@@ -275,7 +275,8 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     connect(triggerButton, SIGNAL(clicked()), SLOT(setTrigger()));
 
     triggerInput = new QComboBox();
-    triggerInput->addItem("Level"); // Add level input
+    triggerInput->addItem("Rising Edge"); // Add level input
+    triggerInput->addItem("Falling Edge");
     triggerInput->addItem("Disabled");
     triggerInput->setFont(labelFont);
     triggerLayout->addWidget(triggerInput);
@@ -346,7 +347,7 @@ void SerialCommsWidget::startScope() {
             while(!token.stop_requested()) {
                 auto newSamples = richarduino.read(samples.size());
 
-                if(triggerMode == TriggerMode::level) {
+                if(triggerMode == TriggerMode::risingEdge) {
                     int triggerPos = 0;
                     for(int i = 1; i < newSamples.size(); i++) {
                         const int sample = (int)newSamples[i] & 0xff;
@@ -358,8 +359,20 @@ void SerialCommsWidget::startScope() {
                     }
                     // std::cout << "Found at pos " << triggerPos << std::endl;
                     std::copy(newSamples.begin() + triggerPos, newSamples.end(), samples.begin());
+                } else  if(triggerMode == TriggerMode::fallingEdge) {
+                    int triggerPos = 0;
+                    for(int i = 1; i < newSamples.size(); i++) {
+                        const int sample = (int)newSamples[i] & 0xff;
+                        const int lastSample = (int)newSamples[i-1] & 0xff;
+                        if(sample <= triggerLevel && lastSample > triggerLevel) {
+                            triggerPos = i;
+                            break;
+                        }
+                    }
+                    // std::cout << "Found at pos " << triggerPos << std::endl;
+                    std::copy(newSamples.begin() + triggerPos, newSamples.end(), samples.begin());
                 } else {
-                   std::copy(newSamples.begin(), newSamples.end(), samples.begin());
+                    std::copy(newSamples.begin(), newSamples.end(), samples.begin());
                 }
                 // Request new frame to be drawn.
                 emit newSamplesAvailable();
@@ -409,7 +422,6 @@ void SerialCommsWidget::setGain() {
     if(gainMap.count(gain) > 0) {
         richarduino.poke(0xffffffc4, gainMap.at(gain));
     }
-    // std::cout << "Setting gain (" << gain << ") not yet implemented" << std::endl;
 }
 
 void SerialCommsWidget::setOffset() {
@@ -417,13 +429,15 @@ void SerialCommsWidget::setOffset() {
     if(offsetMap.count(offset) > 0) {
         richarduino.poke(0xffffffc4, offsetMap.at(offset));
     }
-    // std::cout << "Setting gain (" << gain << ") not yet implemented" << std::endl;
 }
 
 void SerialCommsWidget::setTrigger() {
     QString trigger = triggerInput->currentText();
-    if(trigger == "Level") {
-        triggerMode = TriggerMode::level;
+    if(trigger == "Rising Edge") {
+        triggerMode = TriggerMode::risingEdge;
+        std::cout << "Trigger mode set to " << trigger.toStdString() << std::endl;
+    } else if(trigger == "Falling Edge") {
+        triggerMode = TriggerMode::fallingEdge;
         std::cout << "Trigger mode set to " << trigger.toStdString() << std::endl;
     } else if(trigger == "Disabled") {
         triggerMode = TriggerMode::disabled;
