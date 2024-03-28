@@ -10,7 +10,7 @@
 #include <map>
 
 SerialCommsWidget::SerialCommsWidget(QWidget* parent)
-    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 921600), triggerMode(TriggerMode::risingEdge) {
+    : QWidget(parent), buttonFont("Arial", 12, QFont::Bold), labelFont("Arial", 12), richarduino(1, 921600), triggerMode(TriggerMode::level) {
     std::fill(samples.begin(), samples.end(), 0);
     this->setMinimumWidth(defaultWidth * 3);
 
@@ -260,6 +260,21 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     offsetInput->addItem("-2.5");
     offsetInput->addItem("-1.3");
     offsetInput->addItem("0");
+    offsetInput->addItem("1.3");
+    offsetInput->addItem("2.5");
+    offsetInput->addItem("3.8");
+    offsetInput->addItem("4.9");
+    offsetInput->addItem("6.1");
+    offsetInput->addItem("7.3");
+    offsetInput->addItem("8.4");
+    offsetInput->addItem("10.6");
+    offsetInput->addItem("11.7");
+    offsetInput->addItem("12.7");
+    offsetInput->addItem("13.7");
+    offsetInput->addItem("14.7");
+    offsetInput->addItem("15.7");
+    offsetInput->addItem("16.7");
+    offsetInput->addItem("17.6");
     offsetInput->setFont(labelFont);
     offsetLayout->addWidget(offsetInput);
 
@@ -275,11 +290,19 @@ SerialCommsWidget::SerialCommsWidget(QWidget* parent)
     connect(triggerButton, SIGNAL(clicked()), SLOT(setTrigger()));
 
     triggerInput = new QComboBox();
-    triggerInput->addItem("Rising Edge"); // Add level input
+    triggerInput->addItem("Level");
+    triggerInput->addItem("Rising Edge");
     triggerInput->addItem("Falling Edge");
     triggerInput->addItem("Disabled");
     triggerInput->setFont(labelFont);
     triggerLayout->addWidget(triggerInput);
+
+    levelInput = new QSlider();
+    levelInput->setOrientation(Qt::Horizontal);
+    levelInput->setMinimum(-33);
+    levelInput->setMaximum(33);
+    triggerLayout->addWidget(levelInput);
+    connect(levelInput, SIGNAL(valueChanged(int)), this, SLOT(setLevel(int)));
 
     scopeControlsLayout->addLayout(triggerLayout);
 
@@ -371,6 +394,17 @@ void SerialCommsWidget::startScope() {
                     }
                     // std::cout << "Found at pos " << triggerPos << std::endl;
                     std::copy(newSamples.begin() + triggerPos, newSamples.end(), samples.begin());
+                } else if(triggerMode == TriggerMode::level) {
+                    int triggerPos = 0;
+                    for(int i = 1; i < newSamples.size(); i++) {
+                        const int sample = (int)newSamples[i] & 0xff;
+                        const int lastSample = (int)newSamples[i-1] & 0xff;
+                        if(sample <= triggerLevel && lastSample > triggerLevel || sample >= triggerLevel && lastSample < triggerLevel) {
+                            triggerPos = i;
+                            break;
+                        }
+                    }
+                    std::copy(newSamples.begin() + triggerPos, newSamples.end(), samples.begin());
                 } else {
                     std::copy(newSamples.begin(), newSamples.end(), samples.begin());
                 }
@@ -414,8 +448,12 @@ void SerialCommsWidget::read(int num) {
     }
 }
 
-const static std::map<std::string, uint8_t> gainMap{{"1", 0b00000001}, {"10", 0b0000011}, {"20",0b0000101}, {"30",0b0000111}, {"40",0b0001001},{"60",0b0001011},{"80",0b0001101},{"120",0b0001111},{"157",0b0010001},{"0.25",0b0010011},{".25",0b0010011}};
-const static std::map<std::string, uint8_t> offsetMap{{"-17.6",0x3e},{"-16.7",0x3c},{"-15.7",0x3a},{"-14.7",0x38},{"-13.7",0x36},{"-12.7",0x34},{"-11.7",0x32},{"-10.6",0x30},{"-8.4",0x2e},{"-7.3",0x2c},{"-6.1",0x2a},{"-4.9",0x28},{"-3.8",0x26},{"-2.5",0x24},{"-1.3",0x22},{"0",0}};
+const static std::map<std::string, uint8_t> gainMap{{"1", 0b00000001}, {"10", 0b0000011}, {"20",0b0000101}, {"30",0b0000111}, {"40",0b0001001},{"60",0b0001011},
+                                                    {"80",0b0001101},{"120",0b0001111},{"157",0b0010001},{"0.25",0b0010011},{".25",0b0010011}};
+const static std::map<std::string, uint8_t> offsetMap{{"-17.6",0x3e},{"-16.7",0x3c},{"-15.7",0x3a},{"-14.7",0x38},{"-13.7",0x36},{"-12.7",0x34},{"-11.7",0x32},
+                                                      {"-10.6",0x30},{"-8.4",0x2e},{"-7.3",0x2c},{"-6.1",0x2a},{"-4.9",0x28},{"-3.8",0x26},{"-2.5",0x24},{"-1.3",0x22},
+                                                      {"0",0},{"1.3", 0x2},{"2.5",0x4},{"3.8",0x6},{"4.9",0x8},{"6.1",0xa},{"7.3",0xc},{"8.4",0xe},{"10.6",0x10},
+                                                      {"11.7",0x12},{"12.7",0x14},{"13.7",0x16},{"14.7",0x18},{"15.7",0x1a},{"16.7",0x1c},{"17.6",0x1e}};
 
 void SerialCommsWidget::setGain() {
     std::string gain = gainInput->currentText().toStdString();
@@ -439,12 +477,20 @@ void SerialCommsWidget::setTrigger() {
     } else if(trigger == "Falling Edge") {
         triggerMode = TriggerMode::fallingEdge;
         std::cout << "Trigger mode set to " << trigger.toStdString() << std::endl;
+    } else if(trigger == "Level") {
+        triggerMode = TriggerMode::level;
+        std::cout << "Trigger mode set to " << trigger.toStdString() << std::endl;
     } else if(trigger == "Disabled") {
         triggerMode = TriggerMode::disabled;
         std::cout << "Trigger mode set to " << trigger.toStdString() << std::endl;
     } else {
         std::cout << "Setting trigger (" << trigger.toStdString() << ") not yet implemented" << std::endl;
     }
+}
+
+void SerialCommsWidget::setLevel(int levelx10) {
+    const float voltageLevel = levelx10 / 10.0;
+    this->triggerLevel = ((voltageLevel / 3.3) + 1.0) * 127;  // -3.3 to 3.3 -> 0 to 255
 }
 
 std::vector<uint32_t> SerialCommsWidget::readFirmwareFile(std::string firmwarePath) {

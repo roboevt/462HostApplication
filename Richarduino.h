@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <mutex>
 
 struct Richarduino {
     int port, portFd;
@@ -20,9 +21,13 @@ struct Richarduino {
 
     bool connected;
 
+    std::mutex rwMutex;
+
     std::vector<int> validBauds = {115200, 921600};
 
     Richarduino(int port, int baud) : port(port), baud(baud), connected(false) {
+        const std::lock_guard<std::mutex> lock(rwMutex);
+
         // serial tty code adapted from SerialPort_RevB Connor Monohan 2021
 
         if(std::find(validBauds.begin(), validBauds.end(), baud) == validBauds.end()) {
@@ -62,6 +67,7 @@ struct Richarduino {
     ~Richarduino() { close(portFd); }
 
     int connect(int port, int baud) {
+        const std::lock_guard<std::mutex> lock(rwMutex);
 
         if(std::find(validBauds.begin(), validBauds.end(), baud) == validBauds.end()) {
             std::cout << "Invalid Baudrate" << std::endl;
@@ -101,6 +107,8 @@ struct Richarduino {
     }
 
     void write(std::string data) {
+        const std::lock_guard<std::mutex> lock(rwMutex);
+
         int num_written = ::write(portFd, data.c_str(), data.size());
         if (num_written < 0 || num_written < data.size()) {  // handle error
             std::cout << "Error: Wrote <" << num_written << "> bytes, expected <" << data.size()
@@ -111,6 +119,8 @@ struct Richarduino {
     }
 
     void write(std::vector<uint8_t> data) {
+        const std::lock_guard<std::mutex> lock(rwMutex);
+
         int num_written = ::write(portFd, data.data(), data.size());
         if (num_written < 0 || num_written < data.size()) {  // handle error
             std::cout << "Error: Wrote <" << num_written << "> bytes, expected <" << data.size()
@@ -134,6 +144,7 @@ struct Richarduino {
     }
 
     std::vector<char> read(int n) {
+        const std::lock_guard<std::mutex> lock(rwMutex);
         std::vector<char> data(n);
         int numRead = 0;
 
@@ -144,7 +155,7 @@ struct Richarduino {
             }
 
         } else {
-            int numRead = ::read(portFd, data.data(), n);
+            numRead = ::read(portFd, data.data(), n);
         }
 
         if (numRead == n) {

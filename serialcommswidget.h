@@ -43,6 +43,7 @@ class SerialCommsWidget : public QWidget
     QComboBox* gainInput;
     QComboBox* offsetInput;
     QComboBox* triggerInput;
+    QSlider* levelInput;
 
     QString labelStyle = "border:1px solid black";
     QString completedLabelStyle = "border:1px solid green";
@@ -53,15 +54,14 @@ class SerialCommsWidget : public QWidget
 
     std::jthread worker;
 
-    enum class TriggerMode { disabled, risingEdge, fallingEdge } triggerMode;
-    uint8_t triggerLevel = 127; // todo adjustable
+    enum class TriggerMode { disabled, level, risingEdge, fallingEdge } triggerMode;
 
 public:
     SerialCommsWidget(QWidget* parent = nullptr);
     ~SerialCommsWidget();
 
     std::array<uint8_t, 4095> samples;
-
+    uint8_t triggerLevel = 127;
 
 public Q_SLOTS:
     void connectToRicharduino();
@@ -80,6 +80,7 @@ public Q_SLOTS:
     void setGain();
     void setOffset();
     void setTrigger();
+    void setLevel(int levelx10);
 
 signals:
     void newSamplesAvailable();

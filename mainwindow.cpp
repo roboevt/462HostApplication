@@ -34,36 +34,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     // -------------------- Oscilloscope --------------------
 
-
-
-    // pen.setColor(Qt::blue);
-    // painter.setPen(pen);
-    // QPainterPath path2;
-    // for(double x = 0; x < scopeWidth; x++) {
-    //     path2.lineTo(QPointF(x, -180*(sin(0.05 * (x-100))/(0.05 * (x-100)))+scopeHeight/2));
-    // }
-    // painter.drawPath(path2);
-
     oscopeLabel = new QLabel();
     oscopeLabel->setMinimumSize(scopeWidth, scopeHeight);
-    // QSizePolicy oscopeSizePolicy(QSizePolicy::Expanding);
     oscopeLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    // oscopeLabel->setPixmap(pixmap);
     QBoxLayout* scopeLayout = new QHBoxLayout();
     scopeLayout->addWidget(oscopeLabel);
     totalLayout->addLayout(scopeLayout, 1, 0, 1, 2);
-    // totalLayout->addWidget(oscopeLabel, 1, 0, 1, 2, Qt::AlignAbsolute);
 
     scopeTimer = new QTimer(this);
-    // connect(scopeTimer, SIGNAL(timeout()), this, SLOT(updateDisplay()));
     connect(serialComms, SIGNAL(newSamplesAvailable()), this, SLOT(updateDisplay()));
-
-
-    // const float idealInterval = (numSamples/44100.0f)*1000;
-    // std::cout << "Reading at an interval of " << idealInterval << "ms" << std::endl;
-    // scopeTimer->start(std::floor(idealInterval));  // we should read 4095 bytes every 92.8571 ms
-    // scopeTimer->start(20);
-
 
     window->setMinimumWidth(scopeWidth);
     window->setMinimumHeight(window->width());
@@ -92,18 +71,18 @@ void MainWindow::updateDisplay() {
     painter.setFont(QFont("Arial", 18));
     painter.drawText(QPoint(5,23), "3.3V");
     painter.drawText(QPoint(5,scopeHeight-5), "-3.3V");
-    painter.drawLine(0,scopeHeight/2,scopeWidth,scopeHeight/2);
+
 
     painter.setWindow(0,0,scopeWidth,255);
+    const int lineLevel = 255-serialComms->triggerLevel;
+    painter.drawLine(0,lineLevel,scopeWidth,lineLevel);
     pen.setWidth(3);
     painter.setPen(pen);
-    QPainterPath path(QPointF(0, 127));
+    QPainterPath path(QPointF(-127, 127));
     for(int i = 0; i < numSamples; i++) {
         const float x = ((float)i / numSamples) * scopeWidth;
-        // const float y = (serialComms->samples[i] - 0xff/2) * (scopeHeight/0xff) + (scopeHeight/2);
         const float y = 255 - serialComms->samples[i];
         path.lineTo(QPointF(x, y));
-        // path.lineTo(QPointF(x, -180*(sin(0.05 * (x-100))/(0.05 * (x-100)))+800/2));
     }
     painter.drawPath(path);
     oscopeLabel->setPixmap(pixmap);
