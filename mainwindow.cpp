@@ -97,7 +97,7 @@ void MainWindow::updateDisplay() {
     painter.setWindow(0,0,scopeWidth,255);
     pen.setWidth(3);
     painter.setPen(pen);
-    QPainterPath path;
+    QPainterPath path(QPointF(0, 127));
     for(int i = 0; i < numSamples; i++) {
         const float x = ((float)i / numSamples) * scopeWidth;
         // const float y = (serialComms->samples[i] - 0xff/2) * (scopeHeight/0xff) + (scopeHeight/2);
